@@ -8,8 +8,14 @@
 #define BLUE_PLUS_ONE     28
 #define BLUE_MINUS_ONE    29
 
-#define RED_SCORE         0
-#define BLUE_SCORE        1
+#define RED_TEAM          0
+#define BLUE_TEAM         1
+
+#define VOID              0
+#define GOAL              1
+#define SUPERGOAL         2
+#define PLUS_ONE          3
+#define MINUS_ONE         4
 
 #define PORTNO sizeof(ports)/sizeof(short)
 
@@ -29,42 +35,50 @@ typedef void (*event_callback)(void);
 
 void red_goal() {
   red_score++;
-  write_display(RED_SCORE, red_score);
+  write_display(RED_TEAM, red_score);
+  send_update(red_score, RED_TEAM, GOAL);
 }
 
 void red_supergoal() {
   red_score++;
-  write_display(RED_SCORE, red_score);
+  write_display(RED_TEAM, red_score);
+  send_update(red_score, RED_TEAM, SUPERGOAL);
 }
 
 void red_plus_button() {
   red_score++;
-  write_display(RED_SCORE, red_score);
+  write_display(RED_TEAM, red_score);
+  send_update(red_score, RED_TEAM, PLUS_ONE);
 }
 
 void red_minus_button() {
   red_score--;
-  write_display(RED_SCORE, red_score);
+  write_display(RED_TEAM, red_score);
+  send_update(red_score, RED_TEAM, MINUS_ONE);
 }
 
 void blue_goal() {
   blue_score++;
-  write_display(BLUE_SCORE, blue_score);
+  write_display(BLUE_TEAM, blue_score);
+  send_update(blue_score, BLUE_TEAM, GOAL);
 }
 
 void blue_supergoal() {
   blue_score++;
-  write_display(BLUE_SCORE, blue_score);
+  write_display(BLUE_TEAM, blue_score);
+  send_update(blue_score, BLUE_TEAM, SUPERGOAL);
 }
 
 void blue_plus_button() {
   blue_score++;
-  write_display(BLUE_SCORE, blue_score);
+  write_display(BLUE_TEAM, blue_score);
+  send_update(blue_score, BLUE_TEAM, PLUS_ONE);
 }
 
 void blue_minus_button() {
   blue_score--;
-  write_display(BLUE_SCORE, blue_score);
+  write_display(BLUE_TEAM, blue_score);
+  send_update(blue_score, BLUE_TEAM, MINUS_ONE);
 }
 
 event_callback callbacks[PORTNO] = {
@@ -79,11 +93,13 @@ void setup() {
     pinMode(ports[i], INPUT);
     last_millis[i] = millis();
   }
+  init_ethernet();
+  Serial.begin(9600);
   init_lcd();
 }
 
 void loop() {
-  int m = millis();
+  unsigned long m = millis();
   for (int i=0; i<PORTNO; i++)
     if (digitalRead(ports[i])) {
       cur_millis[i] = m;
@@ -91,9 +107,32 @@ void loop() {
     } else {
       last_read[i] = 0;
     }
-  for (int i=0; i<PORTNO; i++)
+//  Serial.println(m);
+  for (int i=0; i<PORTNO; i++) {
+/*
+    Serial.print(i);
+    Serial.print(" ");
+    Serial.print(cur_millis[i]);
+    Serial.print(" ");
+    Serial.print(last_millis[i]);
+    Serial.print(" ");
+    Serial.println(last_read[i]);
+*/
     if (cur_millis[i] > last_millis[i] + interval && !last_read[i]) {
       callbacks[i]();
       last_millis[i] = cur_millis[i];
     }
+  }
+  byte command = check_ethernet();
+  if (command == 255) return;
+  Serial.println(command);
+  if (command & 2) {
+    if (command & 1) blue_score++;
+    else blue_score--;
+    write_display(BLUE_TEAM, blue_score);
+  } else {
+    if (command & 1) red_score++;
+    else red_score--;
+    write_display(RED_TEAM, red_score);
+  }
 }
