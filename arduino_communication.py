@@ -1,12 +1,17 @@
 import socket
 import traceback
+import sys
+import select
 
 TCP_IP = '192.168.6.250'
 TCP_PORT = 2400
 BUFFER_RCV_LENGTH = 2
 PWD = "VerySecret"
 
+TIMEOUT = 0.001
+
 EVENTS = ["VOID", "GOAL", "SUPERGOAL", "PLUS_ONE", "MINUS_ONE"]
+
 
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -24,7 +29,7 @@ def sendNumber(num):
     print "Sent!"
 
     
-#
+# Elaborate the data received from arduino
 def dataFromBuff(rcv):
     rcv = map(ord, rcv)
     score = ((rcv[0] & 0xF)<<8) + rcv[1]
@@ -37,11 +42,16 @@ def dataFromBuff(rcv):
 
 # Receive data from Arduino
 def receiveData():
-    print "Receiving message..."
-    rcv = ""
-    while len(rcv) < BUFFER_RCV_LENGTH:
-        rcv += s.recv(BUFFER_RCV_LENGTH)
-    return dataFromBuff(rcv)
+    # print "Receiving message..."
+    rlist, _, _ = select.select([s], [], [], TIMEOUT)
+    if rlist:
+        rcv = s.recv(BUFFER_RCV_LENGTH)
+        while len(rcv) < BUFFER_RCV_LENGTH:
+            rcv += s.recv(BUFFER_RCV_LENGTH)
+        return dataFromBuff(rcv)
+    else:
+        return None
+    
 
 
 # Send a score change message to the Arduino
@@ -60,7 +70,7 @@ def sendMessage ( team, score_change ):
         
 # Asks Arduino the score
 def askData(team):
-    print "Sending request for data..."
+    # print "Sending request for data..."
     if team == "RED":
         sendNumber(0x4)
     else:
@@ -70,19 +80,46 @@ def askData(team):
         print "ERROR: non void event received"
     return data
 
+
+
+class Interface(object):
+    ## USER INTERFACE
+    COMMANDS = {"score":"scoreCommand", "show":"showCommand"}
+
+
+    # command to set score
+    def scoreCommand(self,arglist):
+        team = arglist[0]
+        score_change = int(arglist[1])
+        sendMessage(team, score_change)
+
+    # command to show score
+    def showCommand(self,arglist):
+        print askData("RED")
+        print askData("BLUE")
+interface = Interface()
+        
+    
+# Parser function
+def executeCommand(line):
+    words = line.split()
+    command = words[0]
+    arglist = words[1:]
+    getattr(Interface,Interface.COMMANDS[command])(interface,arglist)
+
     
 # Interactive tester
 def run():
     while True:
-        rcv = ""
-        try:
-            rcv = receiveData()
-            print "Message recieved: " + rcv
-        except:
-            traceback.print_exc()
+        rcv = receiveData()
+        if rcv != None:
+            print rcv
+        rlist, _, _ = select.select([sys.stdin], [], [], TIMEOUT)
+        if rlist:
+            line = sys.stdin.readline()
+            executeCommand(line)
 
 
-sendMessage("RED",1)
-print askData("RED")
-print askData("BLUE")
+
+run()
 s.close()
