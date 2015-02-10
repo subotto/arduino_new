@@ -4,23 +4,24 @@ import sys
 import select
 from gi.repository import Gtk
 import threading
+import time
 
 # ARDUINO STANDARD
 #TCP_IP = '192.168.6.250'
 
 # TEST
-TCP_IP = '192.168.6.156'
+# TCP_IP = '192.168.6.156'
 
-TCP_PORT = 2400
+# TCP_PORT = 2400
 BUFFER_RCV_LENGTH = 2
-PWD = "VerySecret"
+# PWD = "VerySecret"
 
 TIMEOUT = 0.001
 
 EVENTS = ["VOID", "GOAL", "SUPERGOAL", "PLUS_ONE", "MINUS_ONE"]
 TEAMS = ["RED", "BLUE"]
 
-
+isConnected = False
 
 # Debug
 debugConsole = Gtk.ListStore(str)
@@ -30,12 +31,12 @@ def debugLog(message):
 
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-debugLog("Connecting to socket...")
-debugLog("TCP_IP: " + str(TCP_IP))
-debugLog("TCP_PORT: " + str(TCP_PORT))
-s.connect((TCP_IP, TCP_PORT))
-debugLog("Connected!")
-s.send(PWD)
+# debugLog("Connecting to socket...")
+# debugLog("TCP_IP: " + str(TCP_IP))
+# debugLog("TCP_PORT: " + str(TCP_PORT))
+# s.connect((TCP_IP, TCP_PORT))
+# debugLog("Connected!")
+# s.send(PWD)
 
 
 
@@ -109,7 +110,16 @@ class ScoreManager:
     score = {"RED":0, "BLUE":0}
     lastToScore = ""
 
+    TCP_IP = ''
+    TCP_PORT = 0
+    PWD = ""
+
     # object references
+    mainWindow = builder.get_object("mainWindow")
+    mainWindow.show_all()
+    connectionWindow = builder.get_object("connectionWindow")
+    connectionWindow.show_all()
+
     scoreTextView = {"RED":builder.get_object("redScore"),
                      "BLUE":builder.get_object("blueScore")}
     lastToScoreBar = {"RED":builder.get_object("redLastToScore"),
@@ -117,6 +127,23 @@ class ScoreManager:
     consoleView = builder.get_object("console")
     consoleView.set_model(debugConsole)
     consoleView.insert_column(Gtk.TreeViewColumn("Debug Log", Gtk.CellRendererText(), text=0),0)
+
+    
+    # connection management
+    def onConnection(self,*args):
+        global isConnected
+
+        self.TCP_IP = builder.get_object("tcpipText").get_text()
+        self.TCP_PORT = int(builder.get_object("tcpportText").get_text())
+        self.PWD = builder.get_object("pwdText").get_text()
+        debugLog("Connecting to socket...")
+        debugLog("TCP_IP: " + self.TCP_IP)
+        debugLog("TCP_PORT: " + str(self.TCP_PORT))
+        s.connect((self.TCP_IP, self.TCP_PORT))
+        debugLog("Connected!")
+        s.send(self.PWD)
+        isConnected = True
+        self.connectionWindow.close()
     
 
     # console management
@@ -140,6 +167,7 @@ class ScoreManager:
 
     # events
     def onDestroyWindow(self, *args):
+        s.close()
         Gtk.main_quit(*args)
 
     def printScore(self,team):
@@ -166,11 +194,14 @@ scoreManager = ScoreManager()
 
 
 
-
-
-
 class ArduinoListener(threading.Thread):
     def run(self):
+        global isConnected
+
+        while not isConnected:
+            time.sleep(1)
+            debugLog("Not listening...")
+        debugLog("Listening!")
         while True:
             (rcv,isSocketOpen) = receiveData()
             if not isSocketOpen:
@@ -181,16 +212,14 @@ class ArduinoListener(threading.Thread):
 
     def updateScore(self,rcv):
         scoreManager.updateScore(rcv["team"],rcv["score"])
-            
+
 arduinoListener = ArduinoListener()
+
+
 
 
 # Run
 builder.connect_signals(ScoreManager())
-mainWindow = builder.get_object("mainWindow")
-mainWindow.show_all()
-#connectionWindow = builder.get_object("connectionWindow")
-#connectionWindow.show_all()
 
 
 arduinoListener.start()
@@ -198,4 +227,4 @@ Gtk.main()
 
 
 
-s.close()
+
