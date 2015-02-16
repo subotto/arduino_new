@@ -8,6 +8,16 @@
 #define BLUE_PLUS_ONE     28
 #define BLUE_MINUS_ONE    29
 
+#define RED_GOAL_ACTIVE          true
+#define RED_SUPERGOAL_ACTIVE     true
+#define RED_PLUS_ONE_ACTIVE      true
+#define RED_MINUS_ONE_ACTIVE     true
+
+#define BLUE_GOAL_ACTIVE         true
+#define BLUE_SUPERGOAL_ACTIVE    true
+#define BLUE_PLUS_ONE_ACTIVE     true
+#define BLUE_MINUS_ONE_ACTIVE    true
+
 #define RED_TEAM          0
 #define BLUE_TEAM         1
 
@@ -24,6 +34,11 @@ static const short ports[] = {
     BLUE_GOAL, BLUE_SUPERGOAL, BLUE_PLUS_ONE, BLUE_MINUS_ONE
 };
 
+static const bool is_active[] = {
+  RED_GOAL_ACTIVE, RED_SUPERGOAL_ACTIVE, RED_PLUS_ONE_ACTIVE, RED_MINUS_ONE_ACTIVE,
+  BLUE_GOAL_ACTIVE, BLUE_SUPERGOAL_ACTIVE, BLUE_PLUS_ONE_ACTIVE, BLUE_MINUS_ONE_ACTIVE
+}
+
 int red_score, blue_score;
 
 unsigned long last_millis[PORTNO] = {};
@@ -32,6 +47,47 @@ char last_read[PORTNO] = {};
 static const int interval = 500;
 
 typedef void (*event_callback)(void);
+
+
+void receive_command(byte command) {
+  /* // receive a command to change blue score */
+  /* if (command & 2) { */
+  /*   if (command & 1) blue_score++; */
+  /*   else blue_score--; */
+  /*   write_display(BLUE_TEAM, blue_score); */
+  /* } */
+  /* // receive a command to change red score */
+  /* else { */
+  /*   if (command & 1) red_score++; */
+  /*   else red_score--; */
+  /*   write_display(RED_TEAM, red_score); */
+  /* } */
+  
+  // gestione punteggi
+  if (command < 4) {
+    switch ( command ) {
+    case 0:
+      red_score--;
+      break;
+    case 1:
+      red_score++;
+      break;
+    case 2:
+      blue_score--;
+      break;
+    case 3:
+      blue_score++;
+      break;
+    }
+    // gestione fotocellule
+    else if (command & 16) {
+      is_active[ (command & 14) >> 1 ] = command & 1;
+    }
+    // comando non valido
+    else Serial.print("Invalid command");
+      
+  }
+
 
 void red_goal() {
   red_score++;
@@ -101,7 +157,7 @@ void setup() {
 void loop() {
   unsigned long m = millis();
   for (int i=0; i<PORTNO; i++)
-    if (digitalRead(ports[i])) {
+    if (digitalRead(ports[i]) && is_active[i]) {
       cur_millis[i] = m;
       last_read[i] = 1;
     } else {
@@ -126,13 +182,5 @@ void loop() {
   byte command = check_ethernet();
   if (command == 255) return;
   Serial.println(command);
-  if (command & 2) {
-    if (command & 1) blue_score++;
-    else blue_score--;
-    write_display(BLUE_TEAM, blue_score);
-  } else {
-    if (command & 1) red_score++;
-    else red_score--;
-    write_display(RED_TEAM, red_score);
-  }
+  receive_command(command);
 }
