@@ -20,6 +20,7 @@ void write_display(int display, int n) {
 void init_lcd() {
   lc1.shutdown(0, false);
   lc1.setIntensity(0, 15);
+  lc1.clearDisplay(0);
   write_display(0, 0);
   write_display(1, 0);
 }
