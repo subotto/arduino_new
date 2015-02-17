@@ -83,6 +83,8 @@ void parse_command(byte command) {
     default:
       Serial.println("Invalid command");
   }
+  if (red_score < 0) red_score = 0;
+  if (blue_score < 0) blue_score = 0;
 }
 
 
@@ -172,4 +174,6 @@ void loop() {
     parse_command(command);
   }
   send_event();
+  if (red_score < 0) red_score = 0;
+  if (blue_score < 0) blue_score = 0;
 }
