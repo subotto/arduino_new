@@ -35,56 +35,34 @@ static const int interval = 500;
 
 typedef void (*event_callback)(void);
 
-
-void parse_command(byte command) {  
-  switch ( command ) {
-    case 0:
-      red_score--;
-      write_display(RED_TEAM, red_score);
-      break;
-    case 1:
-      red_score++;
-      write_display(RED_TEAM, red_score);
-      break;
-    case 2:
-      blue_score--;
-      write_display(BLUE_TEAM, blue_score);
-      break;
-    case 3:
-      blue_score++;
-      write_display(BLUE_TEAM, blue_score);
-      break;
-    case 4:
-    case 5:
-      enqueue_update(red_score, RED_TEAM, VOID);
-      break;
-    case 6:
-    case 7:
-      enqueue_update(blue_score, BLUE_TEAM, VOID);
-      break;
-    case 16:
-    case 17:
-    case 18:
-    case 19:
-    case 20:
-    case 21:
-    case 22:
-    case 23:
-    case 24:
-    case 25:
-    case 26:
-    case 27:
-    case 28:
-    case 29:
-    case 30:
-    case 31:
-      is_disabled[(command & 14) >> 1] = command & 1;
-      break;
-    default:
-      Serial.println("Invalid command");
-  }
+void fix_scores() {
   if (red_score < 0) red_score = 0;
   if (blue_score < 0) blue_score = 0;
+  if (red_score > 4000) red_score = 4000;
+  if (blue_score > 4000) blue_score = 4000;
+}
+
+void parse_command(byte command) {
+  bool is_blue = command & 0x80;
+  if (command & 0x40) {
+    if (command & 0x08) {
+      is_disabled[((command & 0x6) >> 1) + is_blue * 8] = command & 1;
+    } else {
+      if (is_blue) enqueue_update(blue_score, BLUE_TEAM, VOID);
+      else enqueue_update(red_score, RED_TEAM, VOID);
+    }
+  } else {
+    int change = 1 << (command & 0xF);
+    if (command & 0x20) change = -change;
+    if (is_blue) {
+      blue_score += change;
+      write_display(BLUE_TEAM, blue_score);
+    } else {
+      red_score += change;
+      write_display(RED_TEAM, red_score);
+    }
+  }
+  fix_scores();
 }
 
 
@@ -174,6 +152,5 @@ void loop() {
     parse_command(command);
   }
   send_event();
-  if (red_score < 0) red_score = 0;
-  if (blue_score < 0) blue_score = 0;
+  fix_scores();
 }
