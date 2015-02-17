@@ -40,23 +40,27 @@ void parse_command(byte command) {
   switch ( command ) {
     case 0:
       red_score--;
+      write_display(RED_TEAM, red_score);
       break;
     case 1:
       red_score++;
+      write_display(RED_TEAM, red_score);
       break;
     case 2:
       blue_score--;
+      write_display(BLUE_TEAM, blue_score);
       break;
     case 3:
       blue_score++;
+      write_display(BLUE_TEAM, blue_score);
       break;
     case 4:
     case 5:
-      send_update(red_score, RED_TEAM, VOID);
+      enqueue_update(red_score, RED_TEAM, VOID);
       break;
     case 6:
     case 7:
-      send_update(blue_score, BLUE_TEAM, VOID);
+      enqueue_update(blue_score, BLUE_TEAM, VOID);
       break;
     case 16:
     case 17:
@@ -76,15 +80,6 @@ void parse_command(byte command) {
     case 31:
       is_disabled[(command & 14) >> 1] = command & 1;
       break;
-    case 255:
-      for (int i=0; i<PORTNO; i++) {
-        last_millis[i] = 0;
-        cur_millis[i] = 0;
-        last_read[i] = 0;
-        is_disabled[i] = 0;
-      }
-      red_score = blue_score = 0;
-      break;
     default:
       Serial.println("Invalid command");
   }
@@ -94,49 +89,49 @@ void parse_command(byte command) {
 void red_goal() {
   red_score++;
   write_display(RED_TEAM, red_score);
-  send_update(red_score, RED_TEAM, GOAL);
+  enqueue_update(red_score, RED_TEAM, GOAL);
 }
 
 void red_supergoal() {
   red_score++;
   write_display(RED_TEAM, red_score);
-  send_update(red_score, RED_TEAM, SUPERGOAL);
+  enqueue_update(red_score, RED_TEAM, SUPERGOAL);
 }
 
 void red_plus_button() {
   red_score++;
   write_display(RED_TEAM, red_score);
-  send_update(red_score, RED_TEAM, PLUS_ONE);
+  enqueue_update(red_score, RED_TEAM, PLUS_ONE);
 }
 
 void red_minus_button() {
   red_score--;
   write_display(RED_TEAM, red_score);
-  send_update(red_score, RED_TEAM, MINUS_ONE);
+  enqueue_update(red_score, RED_TEAM, MINUS_ONE);
 }
 
 void blue_goal() {
   blue_score++;
   write_display(BLUE_TEAM, blue_score);
-  send_update(blue_score, BLUE_TEAM, GOAL);
+  enqueue_update(blue_score, BLUE_TEAM, GOAL);
 }
 
 void blue_supergoal() {
   blue_score++;
   write_display(BLUE_TEAM, blue_score);
-  send_update(blue_score, BLUE_TEAM, SUPERGOAL);
+  enqueue_update(blue_score, BLUE_TEAM, SUPERGOAL);
 }
 
 void blue_plus_button() {
   blue_score++;
   write_display(BLUE_TEAM, blue_score);
-  send_update(blue_score, BLUE_TEAM, PLUS_ONE);
+  enqueue_update(blue_score, BLUE_TEAM, PLUS_ONE);
 }
 
 void blue_minus_button() {
   blue_score--;
   write_display(BLUE_TEAM, blue_score);
-  send_update(blue_score, BLUE_TEAM, MINUS_ONE);
+  enqueue_update(blue_score, BLUE_TEAM, MINUS_ONE);
 }
 
 event_callback callbacks[PORTNO] = {
@@ -165,17 +160,7 @@ void loop() {
     } else {
       last_read[i] = 0;
     }
-//  Serial.println(m);
   for (int i=0; i<PORTNO; i++) {
-/*
-    Serial.print(i);
-    Serial.print(" ");
-    Serial.print(cur_millis[i]);
-    Serial.print(" ");
-    Serial.print(last_millis[i]);
-    Serial.print(" ");
-    Serial.println(last_read[i]);
-*/
     if (cur_millis[i] > last_millis[i] + interval && !last_read[i]) {
       callbacks[i]();
       last_millis[i] = cur_millis[i];
@@ -186,4 +171,5 @@ void loop() {
     Serial.println(command);
     parse_command(command);
   }
+  send_event();
 }
