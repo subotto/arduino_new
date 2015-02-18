@@ -1,11 +1,21 @@
+/* #define RED_GOAL          22 */
+/* #define RED_SUPERGOAL     23 */
+/* #define RED_PLUS_ONE      24 */
+/* #define RED_MINUS_ONE     25 */
+
+/* #define BLUE_GOAL         26 */
+/* #define BLUE_SUPERGOAL    27 */
+/* #define BLUE_PLUS_ONE     28 */
+/* #define BLUE_MINUS_ONE    29 */
+
 #define RED_GOAL          22
-#define RED_SUPERGOAL     23
-#define RED_PLUS_ONE      24
+#define RED_SUPERGOAL     24
+#define RED_PLUS_ONE      23
 #define RED_MINUS_ONE     25
 
 #define BLUE_GOAL         26
-#define BLUE_SUPERGOAL    27
-#define BLUE_PLUS_ONE     28
+#define BLUE_SUPERGOAL    28
+#define BLUE_PLUS_ONE     27
 #define BLUE_MINUS_ONE    29
 
 #define RED_TEAM          0
@@ -46,7 +56,7 @@ void parse_command(byte command) {
   bool is_blue = command & 0x80;
   if (command & 0x40) {
     if (command & 0x08) {
-      is_disabled[((command & 0x6) >> 1) + is_blue * 8] = command & 1;
+      is_disabled[((command & 0x6) >> 1) + is_blue * 4] = command & 1;
     } else {
       if (is_blue) enqueue_update(blue_score, BLUE_TEAM, VOID);
       else enqueue_update(red_score, RED_TEAM, VOID);
