@@ -62,9 +62,12 @@ void enqueue_update(int score, int team, int source) {
 }
 
 void send_event() {
-  if (!client || !client.connected() || !client || !client.connected() || pwl != sizeof(password)-1) return;
   if (eq_begin == 2048 && eq_end != 2048) eq_begin = 0;
   if (eq_begin == eq_end) return;
-  client.write(event_queue[eq_begin++]);
-  client.write(event_queue[eq_begin++]);
+  if (!client || !client.connected() || !client || !client.connected() || pwl != sizeof(password)-1) {
+     eq_begin += 2;
+  } else {
+    client.write(event_queue[eq_begin++]);
+    client.write(event_queue[eq_begin++]);
+  }
 }
